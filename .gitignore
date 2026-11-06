@@ -1,0 +1,26 @@
+# Never commit secrets, weights, or captured run data
+.env
+*.env
+secrets.json
+FLAG
+
+# Model weights / caches (pulled during the seal lifecycle, never committed)
+models/
+weights/
+*.gguf
+*.safetensors
+.cache/
+
+# Telemetry / captured runs (may contain agent-generated offensive artifacts)
+telemetry/runs/
+runs/
+*.log
+captures/
+
+# Build / runtime
+__pycache__/
+*.pyc
+node_modules/
+.DS_Store
+/run/
+*.sock
