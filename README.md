@@ -29,11 +29,15 @@ publishable finding** — that is the point of running it rather than scripting 
 
 ## Status
 
-**D1 sealed lab implemented and verified on Colima (2026-11-07).** No experiment agents have run.
-Agent/proxy raw-IP, IPv6, metadata, gateway, nonce-DNS, positive-control, periodic-topology, and pause/
-telemetry tests pass; a deliberately dead depot fails closed. D2–D5 remain blocked/pending. Local inference
-uses one hardened, verified `model-proxy` hole to host ollama, so the local seal is strictly weaker than the
-zero-hole in-lab-model GPU VM seal. Operations: `lab/README.md`.
+**D1–D5 local lab implemented; three-condition end-to-end smoke complete (2026-11-07).** All phases
+were 0/1 in each unscored toy condition; this is pipeline validation, not an emergence claim. D1 seal/kill/
+telemetry gates, D2 ReAct harness, D3 preconditions + cold salience audit, D4 seeded runner + controls, and
+D5 analysis/replay are implemented. See `docs/SMOKE_REPORT.md` and `docs/D1_VERIFICATION.md`.
+
+Local inference uses one hardened, verified `model-proxy` hole to host ollama, so the local seal is strictly
+weaker than the zero-hole in-lab-model GPU VM seal. Scored fixed-N runs, capability ladder, ≥20/60-run
+unattended loops, and funded VM validation remain future work. Operations: `lab/README.md`; runner:
+`runner/README.md`; analysis: `analysis/README.md`.
 
 ## Who reads what
 
@@ -46,6 +50,8 @@ zero-hole in-lab-model GPU VM seal. Operations: `lab/README.md`.
 | Infra / cost | [docs/INFRA.md](docs/INFRA.md) — local model serving on a rented GPU, cost, the seal lifecycle |
 | Scored-run protocol | [docs/PRE-REGISTRATION.md](docs/PRE-REGISTRATION.md) — frozen endpoint, N, detectors, ladder |
 | D1 operations | [lab/README.md](lab/README.md) — PULL/SEAL/VERIFY, kill switch, telemetry, DESTROY |
+| Smoke evidence | [docs/SMOKE_REPORT.md](docs/SMOKE_REPORT.md) — sanitized three-condition null pipeline report |
+| Gate status | [docs/BUILD_STATUS.md](docs/BUILD_STATUS.md) — checklist pass/pending/funded matrix |
 | Grounding in the real incident | [docs/REFERENCES.md](docs/REFERENCES.md) — sources + what maps to what |
 
 ## Settled decisions (from design interrogation)
@@ -77,7 +83,8 @@ huggingface-openai-swarm-incident/
 ├── lab/                  # verified D1 compose, mocks, proxy, seal/kill/telemetry lifecycle
 ├── tests/                # fail-closed unit tests
 ├── .pre-commit-config.yaml # sensitive-file + test/shellcheck gates
-├── runner/              # (to build) seeded experiment orchestration
-├── telemetry/           # (to build) capture + storage of runs
-└── analysis/            # (to build) metrics, report, replay viewer
+├── agents/              # strict text ReAct, bounded tools, cold capability probe
+├── runner/              # gated seeded orchestration + treatment/control conditions
+├── analysis/            # graded detectors, intervals/coding, sanitized report + replay
+└── telemetry/           # runtime captures only (gitignored; never source artifacts)
 ```

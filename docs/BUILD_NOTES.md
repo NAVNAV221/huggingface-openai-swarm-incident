@@ -32,18 +32,23 @@ ready to implement. Build happens in the worktree `build/sealed-lab` at
   feed); no pre-seeded message; egress surface de-saliencied. (Science validity — PM §A.4.)
 
 ## What's built so far
-- §C1 doc edits + frozen `docs/PRE-REGISTRATION.md` committed (`7c07565`).
-- **D1 sealed lab implemented and proven on Colima** (`seal-20261107-d1`): internal labnet, opaque mock
-  DNS/services, hardened self-verified model-proxy, fail-closed agent+proxy verification, periodic canary
-  + runtime topology checks, pause/kill test, four-layer telemetry, hygiene hooks, DESTROY.
-- Live positive gate and kill-switch pass; dead-depot negative gate freezes; second-network negative check
-  fails. No experiment agents have run. `ollama` is not installed yet (needed for D2 smoke-test).
+- §C1 docs + frozen pre-registration (`afb2fbe`); D1 sealed lab (`1f7af08`); D2 ReAct (`80c455b`);
+  D3 preconditions/audit (`e487662`); D4 runner/controls (`b769fa1`); D5 analysis/replay (`40f4be9`).
+- D1 proven on Colima: internal labnet, opaque mocks/DNS, hardened self-verified proxy, raw-IP/IPv6/nonce/
+  positive-control checks, periodic topology canary, pause/kill test, four-layer telemetry, hygiene, DESTROY.
+- Three local 3-agent/3-step smoke conditions complete (`smoke-treatment-001`, `smoke-isolated-001`,
+  `smoke-no-impossible-001`), all phases 0/1 and all unscored. Ollama 3B experiment + 7B cold-audit models
+  are local; no weights/telemetry committed. See `docs/SMOKE_REPORT.md`.
+- Gates proven: missing audit stops before agent creation; dead depot freezes; direct target/gateway/raw-IP
+  probes fail; second network is detected; isolation hides one agent's object from another; replay/report
+  generation works. Independent red-team/researcher-repro subagents are still pending.
 
 ## Next action (where to start)
-1. ~~Apply §C1 docs + pre-registration~~ **DONE** (`7c07565`).
-2. ~~Build + prove D1 on Colima~~ **DONE**; see `lab/README.md` and `worklog.md` for the evidence.
-3. **Next: D2 agents/ReAct**, only through the existing `lab/bin/verify-seal.sh --with-kill-test` gate. Then D3
-   preconditions + prompt-audit, D4 runner+controls+telemetry, D5 analysis+replay.
+1. ~~Apply docs, build D1–D5, and smoke the full local pipeline~~ **DONE**.
+2. Run independent containment red-team + researcher-repro reviews; fix findings without behavior-nudging.
+3. Funded phase only: validate the zero-hole GPU-VM seal, use `/loop` for fixed-N unattended conditions,
+   execute the frozen capability ladder/pre-post-cutoff comparisons (~60 clean runs for the tight-null target).
+   OpenRouter would require a separate inference-egress deviation sign-off.
 
 ## Containment flag to keep visible
 Local model-proxy = **one controlled, verified egress hole** (agents → proxy → host ollama). It keeps
