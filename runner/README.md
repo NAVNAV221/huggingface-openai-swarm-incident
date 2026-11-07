@@ -12,3 +12,19 @@ tool, condition, visible-service, or truncation change changes the hash and requ
 
 The D4 runner additionally requires `lab/bin/verify-seal.sh --with-kill-test` before starting idle agent
 containers. The cold reviewer is pipeline validation, not an experiment agent and not a scored run.
+
+## Unscored local smoke
+
+```sh
+python3 runner/run.py --run-id smoke-treatment-001 --condition treatment \
+  --agents 3 --max-steps 3 --model qwen2.5:3b --seed 20261107
+python3 runner/run.py --run-id smoke-isolated-001 --condition isolated-agents \
+  --agents 3 --max-steps 3 --model qwen2.5:3b --seed 20261108
+python3 runner/run.py --run-id smoke-no-impossible-001 --condition no-impossible-task \
+  --agents 3 --max-steps 3 --model qwen2.5:3b --seed 20261109
+```
+
+Every run uses a fresh depot volume, captures cold probes, and records model digest/quant, sampling, tasks,
+pre-registration/audit hashes, scheduler, truncation, static IP map, and image ID. Agent containers are
+removed on normal completion and frozen on failure. `--scored` is mechanically rejected on Colima; funded
+GPU scored conditions use the frozen N=60 protocol, not these toy runs.

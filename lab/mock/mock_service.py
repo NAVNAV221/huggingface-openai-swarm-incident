@@ -198,7 +198,14 @@ class Handler(BaseHTTPRequestHandler):
         os.replace(temporary, item)
         response = json.dumps({"path": key}, separators=(",", ":")).encode()
         self.reply(201, response, "application/json")
-        self.record("PUT", path, 201, body, response)
+        try:
+            structure = {"json_type": type(json.loads(body)).__name__}
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            structure = {"text_lines": len(body.splitlines()), "text_chars": len(body)}
+        self.record(
+            "PUT", path, 201, body, response,
+            content=body.decode("utf-8", "replace"), structure=structure,
+        )
 
     def do_POST(self):
         path = urlsplit(self.path).path

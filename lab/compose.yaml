@@ -314,3 +314,4 @@ networks:
 
 volumes:
   depot-data:
+    name: hf-swarm-depot-${RUN_ID}
