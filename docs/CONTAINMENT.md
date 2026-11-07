@@ -10,10 +10,17 @@ guidance — the implementation session must build and *verify* them.
 ## The boundary (non-negotiable)
 
 - **Air-gapped during runs.** While an experiment runs, the environment has **deny-all egress**. Agents
-  can reach only the local mock services (`depot`, `origin`, `hub`, mock DNS). No real internet, no real
-  API, no real third party — ever — from inside a run.
+  can reach only their permitted local mock services and the fixed local inference endpoint. No real
+  internet, real API, or real third party — ever — from inside a run. **L3 route denial is the
+  load-bearing seal**: agent sandboxes attach only to an `internal: true` bridge, with no additional
+  network, host mount, or Docker socket. Mock DNS/NXDOMAIN is defense-in-depth, **not** egress control.
 - **Local inference only.** Models are served **in-lab** (ollama/vLLM on the same box). No inference call
-  leaves the environment. (This is why "cloud GPU" is still air-gapped — see the seal lifecycle below.)
+  leaves the machine. On the GPU VM the model is a sibling inside `labnet`: a zero-hole agent seal. For
+  local Colima development, a dual-homed `model-proxy` is the **one controlled, verified hole** to host
+  ollama:11434. It has a single hardcoded upstream, completion-only routes, its own default-deny nftables
+  rules, and must pass the same egress verification. Agent net namespaces remain route-less, but this
+  local topology is honestly **strictly weaker** than the zero-hole VM seal; clean air-gap claims must be
+  validated on the VM.
 - **Mock targets only.** There is no real HuggingFace, Artifactory, or any real third party. `hub`/
   `origin`/`depot` are purpose-built local analogs.
 - **Analog, non-reusable vulnerabilities.** The exploitable weaknesses are **generic analogs**, not
@@ -31,6 +38,8 @@ A rented GPU VM is fine *if* you seal it. The order matters:
 ```
 1. PROVISION   rent the VM
 2. PULL        download model weights + build images      [egress ON — only here]
+               GPU VM: attach a minimal/no instance role before this window;
+               cloud metadata credentials must not be available while pulling
 3. SEAL        enable deny-all egress (default-deny firewall; allow only intra-lab)
 4. VERIFY      prove the seal (see checks below) BEFORE any agent starts
 5. RUN         execute the experiment — fully air-gapped
@@ -42,14 +51,28 @@ The only window with egress is step 2 (pulling weights). No agent runs until ste
 
 ## Verify the seal (acceptance — the lab must self-check)
 
-Before any agent step executes, automated checks must confirm:
-- from inside an agent sandbox, a request to the **public internet** → fails/blackholed.
-- a request to a **cloud metadata endpoint** (`169.254.169.254`, link-local, host loopback) → fails.
-- DNS resolves **only** the mock services; anything else → NXDOMAIN/blackhole.
-- the model endpoint is the **local** server, not a remote API.
-- a **kill switch** halts all agents and freezes state within seconds, and is tested each run.
+Before any agent step executes, automated checks must confirm, from a byte-identical agent sandbox **and
+from the local model-proxy**:
+- **Raw-IP public egress** to `1.1.1.1:443` and `8.8.8.8:53` fails with route/policy denial; successful
+  DNS resolution is never accepted as evidence of containment.
+- **IPv6 egress** to `2606:4700:4700::1111` fails and IPv6 is disabled in the sandbox. This check may not
+  be skipped on an IPv4-only host.
+- `169.254.169.254`, other link-local/host-loopback addresses, and the lab gateway are blocked; the sole
+  exception is the proxy's fixed host-gateway:11434 upstream.
+- Permitted opaque mock names resolve to expected lab IPs, while `huggingface.co`, `api.openai.com`, and a
+  fresh **per-run nonce domain** return authoritative NXDOMAIN. The nonce defeats cached build-time data.
+- The model base URL resolves only to `model-proxy` (local) or `model` (VM); remote model APIs are
+  unreachable, and the proxy exposes no arbitrary fetch or path-selected upstream.
+- A **positive control** reaches the depot and resolves a mock name. A bare timeout is INCONCLUSIVE and
+  fails verification; an entirely dead network must never produce a false pass.
+- The periodic runtime canary repeats these checks (including nonce DNS and positive controls) to detect
+  runtime `network connect` or firewall changes. Failure freezes agents and aborts the run.
+- A **kill switch** using `docker pause` halts all agents and the proxy and freezes state within seconds.
+  Each run-start test also proves canary telemetry survives the pause and that a synthetic anomaly invokes
+  the automatic trigger; the telemetry sink stays running.
 
-If any check fails, the run **does not start**.
+Verification is fail-closed: any error, missing check, timeout, or failed control exits non-zero, freezes
+the run, and **no agent process starts**.
 
 ## Kill switch & monitoring
 

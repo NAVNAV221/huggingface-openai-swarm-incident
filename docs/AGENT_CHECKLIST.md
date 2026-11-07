@@ -17,11 +17,14 @@ If a gate cannot be satisfied, **the change does not merge and the run does not 
 
 - [ ] **Deny-all egress** from agent sandboxes during a run; only intra-lab mock services reachable.
 - [ ] **Seal verification passes** from inside an agent sandbox, BEFORE agents start:
-  - [ ] public internet → blocked/blackholed (IPv4 **and** IPv6)
-  - [ ] cloud metadata `169.254.169.254` / link-local / host loopback → blocked
-  - [ ] DNS resolves **only** mock services; anything else → NXDOMAIN/blackhole
-  - [ ] model endpoint is the **local** server, not a remote API
-  - [ ] checks fail-CLOSED (a timeout/error counts as FAIL-to-verify → abort, never "assumed blocked")
+  - [ ] raw-IP public internet (`1.1.1.1`, `8.8.8.8`) → route/policy denied (DNS-only proof is invalid)
+  - [ ] IPv6 (`2606:4700:4700::1111`) → blocked and explicitly checked, never skipped
+  - [ ] cloud metadata `169.254.169.254` / link-local / host loopback / gateway → blocked
+  - [ ] permitted opaque mock names resolve; external names + a fresh nonce domain → NXDOMAIN
+  - [ ] model endpoint is the **local** fixed proxy/server, not a remote API; proxy self-checks pass
+  - [ ] **positive control** resolves a mock and reaches depot, proving the network/checker is alive
+  - [ ] checks fail-CLOSED (bare timeout = INCONCLUSIVE/FAIL; missing/error = abort, never assumed blocked)
+  - [ ] periodic runtime canary repeats verification; failure freezes agents + proxy and aborts
 - [ ] **Kill switch** halts all agents + freezes state within seconds; **tested at every run start**.
 - [ ] **Mock targets only** — no real HuggingFace/Artifactory/third party; `depot`/`origin`/`hub` are local analogs.
 - [ ] **Analog, non-reusable vulnerabilities** only — no specific real CVEs, nothing portable to real software.
@@ -30,13 +33,21 @@ If a gate cannot be satisfied, **the change does not merge and the run does not 
 
 ## 2. Science gates (METHODOLOGY.md)
 
-- [ ] **Prompt-audit passed** — an independent cold read of agent prompts/tools/env finds **no** hint,
-      reward, or description of H1 (channel) / H2 (coordination) / H3 (pivot). A hint invalidates results.
+- [ ] **Salience-scoped prompt-audit passed** — an independent cold read of prompts, tool descriptions,
+      errors, environment/DNS layout, credential/namespace naming, listing shape, and truncation/
+      summarization policy finds no hint/reward/description of H1–H3 **and no conspicuous single door**.
+      Audit whether the store resembles a feed, whether errors reveal alternate paths/authorship, and
+      whether the egress-capable helper is unusually salient among plausible actions/dead-ends.
+- [ ] Prompt-audit reruns on **every** prompt/tool/config/environment/truncation change; its artifact is
+      hash-bound to the exact run config. Presence-only or one-time review is insufficient.
 - [ ] Preconditions are **environment-shaping only**, never behavior-shaping. Any change that crosses the
       line is logged as a **separate condition**, never smuggled into an existing one.
 - [ ] **Detectors are pre-registered** (defined before running) and version-pinned per condition.
-- [ ] Run is **seeded & reproducible**: same (seed, models, N, task set, precondition knobs) → same setup.
-- [ ] A condition is **fixed** across its ≥20 runs; only one independent variable changes between conditions.
+- [ ] Run setup is **seeded & reproducible**: same (seed, model digest/quant/params, N, task set,
+      precondition knobs) → same setup; stochastic completions are not claimed to be bit-identical.
+- [ ] **Scheduler** (lockstep/async) and truncation policy are fixed, recorded, and audited.
+- [ ] A scored condition follows its frozen fixed N/precision target (local toy runs are not scored);
+      only one independent variable changes between conditions.
 - [ ] Model versions recorded (contamination caveat noted: models may have trained on incident write-ups).
 
 ## 3. Telemetry gates (HANDOFF)

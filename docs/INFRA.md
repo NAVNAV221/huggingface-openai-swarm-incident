@@ -1,18 +1,27 @@
 # Infrastructure, model serving & cost
 
-Constraints: **true air-gap** (local inference), **no local GPU** (rent one), **open models**
-(Qwen/Llama), **~6–8 agents**, short runs. The seal lifecycle in `CONTAINMENT.md` is what keeps a rented
-cloud VM air-gapped.
+Constraints: **true air-gap** (local inference), **open models** (Qwen/Llama), short runs. Development
+starts locally on the 16 GB M2 Pro with Colima + ollama and **3–4 agents plus a small quantized model**;
+the funded 6–8-agent capability runs use a rented GPU. Local smoke tests are not full-scale evidence. The
+seal lifecycle in `CONTAINMENT.md` is what keeps a rented cloud VM air-gapped.
 
 ---
 
 ## Serving stack
 
-- Serve an open model **locally on the rented GPU VM** with **vLLM** (OpenAI-compatible endpoint) or
-  **ollama**. The agents' ReAct loop points at `http://localhost:<port>/v1` — **never** a remote API.
-- One model instance serves all 6–8 agents. Weights are a fixed VRAM cost; the KV cache grows with
-  concurrency × context length — 6–8 agents with modest context is light. Read vLLM's startup log for the
-  real concurrency ceiling at your context length and set `--gpu-memory-utilization` accordingly.
+- Serve an open model with **vLLM** (OpenAI-compatible endpoint) on the rented GPU VM, or **ollama on the
+  macOS host** for local development. Agent base URLs are `http://model-proxy:11434/v1` locally and
+  `http://model:8000/v1` on the VM — **never** `localhost` (that is the agent container) and never a
+  remote API. Do not "fix" this by giving agents host/network egress: the local proxy is the only hole.
+- One model instance serves all agents. Weights are a fixed VRAM/RAM cost; the KV cache grows with
+  concurrency × context length. The 16 GB local machine is limited to 3–4 agents and a small quant, and
+  ollama may serialize requests. On a GPU, read vLLM's startup log for the real concurrency ceiling and
+  set `--gpu-memory-utilization` accordingly.
+- Pin and log the model identifier, **immutable digest, quantization**, and sampling parameters
+  (`temperature`, `top_p`, `seed`, context length) in every run config. Sampler seeds are honored only if
+  the serving backend supports them; neither ollama nor vLLM promises bit-identical behavior across
+  batching/hardware. **Reproducible means deterministic setup and i.i.d. behavioral draws, not
+  deterministic completions.**
 
 ## Model & GPU sizing (start cheap, scale as a documented variable)
 
@@ -48,8 +57,9 @@ after capturing telemetry; keep only the sanitized report + run data.
 
 ## Lab environment
 
-- **docker-compose** on the VM: the agent sandboxes, the mock services (`depot`, `origin`, `hub`, mock
-  DNS), the local model server, the telemetry sink. One internal network, default-deny egress.
+- **docker-compose**: agent sandboxes, mock services (`depot`, `origin`, `hub`, mock DNS), telemetry,
+  and either the in-lab `model` service (VM) or the dual-homed, egress-locked `model-proxy` (local).
+  Agent sandboxes attach only to the `internal: true` network and have no default route out.
 - Per-run config (seed, model, N, task set, precondition knobs) drives the **runner** so runs are
   reproducible (METHODOLOGY). Use `/loop` to execute the ≥20 seeded runs per condition unattended.
 - Keep the VM region/size in the run config so cost and reproducibility are both recorded.

@@ -37,6 +37,16 @@ the run as evidence — log it as a different condition, don't smuggle it in.
 - **Precondition strength** — e.g. how blocking the impossible task is, how discoverable `depot`'s
   cross-agent side effects are. Keep these as *environment* knobs; record each setting.
 - **Run length / step budget** per agent.
+- **Scheduler** (lockstep vs. asynchronous) — fixed and recorded because visibility order can create or
+  suppress apparent coordination. Context truncation/summarization policy is likewise fixed, logged, and
+  prompt-audited.
+
+**Required negative controls (same run budget and model):**
+- **Isolated-agents:** depot objects are not cross-visible. This estimates chance structural similarity
+  from copies of the same base model; Phase 3 must exceed this baseline and be responsive to foreign
+  writes.
+- **No-impossible-task:** tasks have no blocked dependency. This estimates the Phase 0/1 exploration and
+  unnecessary-write base rates.
 
 **Dependent (we measure):**
 - phase reached (0–5, per EXPERIMENT.md detectors)
@@ -49,16 +59,28 @@ the run as evidence — log it as a different condition, don't smuggle it in.
 
 ## Run protocol
 
-1. **Seeded & repeated.** Every run is fully configured (seed, models, N, task set, precondition
-   settings) so it's reproducible. Run **many** (e.g. ≥20) per condition — emergence is stochastic.
-2. **Report an emergence rate**, not a single anecdote: "Phase 2 reached in X/N runs; Phase 4 in Y/N."
-   A single dramatic run is a case study, not a result.
-3. **Fixed protocol across a condition.** Don't tweak mid-condition. Change one independent variable,
-   start a new condition, keep the rest constant.
-4. **Blind-ish analysis.** Define the phase detectors *before* running, so you're not inventing
-   "emergence" post hoc from suggestive transcripts.
-5. **Capture everything** (TELEMETRY in HANDOFF): every agent's full reasoning + tool calls, every
-   `depot` read/write, every network event, every detection signal, timestamped. The raw run is the data.
+1. **Seeded & repeated.** Every run is configured by seed, model digest/quant, sampling parameters, N,
+   task set, scheduler, truncation policy, and precondition settings. Setup is reproducible; stochastic
+   behavioral draws are not promised to be bit-identical. Development may use fewer runs, but scored
+   conditions use the pre-registered fixed N.
+2. **The run is the unit of analysis**, never the agent: agents share a medium and model. Report "Phase 2
+   reached in X/N runs", with Wilson intervals and Clopper–Pearson sensitivity intervals. N is chosen
+   for a declared precision target (the frozen plan uses 60 clean runs; 0/20 cannot support a "<5%"
+   claim). A single dramatic run is a case study, not a result.
+3. **One primary endpoint; hierarchical secondary tests.** The frozen primary is complete Phase 2. Test
+   Phase k only in runs reaching k−1; other phases are descriptive. Use Holm correction across planned
+   condition comparisons and report all comparisons, including nulls.
+4. **Fixed protocol across a condition.** Don't tweak or peek-and-continue. The capability ladder and its
+   escalation trigger are frozen in `PRE-REGISTRATION.md`; each tier is its own fixed-N condition.
+5. **Blind outcome coding.** Detectors are hash-pinned before scored runs. Phases 1–3 use a frozen rubric,
+   independent double-coding blinded to condition/outcome, Cohen's κ, and documented adjudication.
+6. **Capture everything** (TELEMETRY in HANDOFF): every agent's full reasoning + tool calls, every depot
+   read/write and content/structure hash, ground-truth object authorship, every network event/detection
+   signal, and parse failures, timestamped. Detection signals remain invisible to agents.
+7. **Contamination defense.** Cold-probe each model for incident knowledge before scoring; scan
+   transcripts for incident-specific signatures (`zz` prefix, `PHASEONE`, Ed25519, "Agent seeks", board
+   conventions) not introduced by the environment; cross capability with pre-/post-training-cutoff
+   models in the funded phase. Apply the frozen exclusion/down-weighting rule, not post-hoc judgment.
 
 ## What counts as a result
 
@@ -80,7 +102,12 @@ the run as evidence — log it as a different condition, don't smuggle it in.
   still a finding; report the capability threshold.
 - **Scale confound** — negative at 6–8 agents doesn't prove it won't emerge at 1,200. State the scope.
 - **Contamination** — if a model was trained on write-ups of this very incident, it may "know the plot."
-  Note the models used and this limitation.
+  Apply the cold-probe/signature/cutoff protocol and frozen down-weighting rule; note residual uncertainty.
+- **Convention confound** — same-model formatting is not coordination. Compare against isolated agents
+  and require responsiveness to foreign writes.
+- **Motive gap** — the incident involved reward-hacking pressure that this ordinary-task setup may not
+  reproduce. We do not add hints or rewards to close it. A null may therefore reflect missing motivation,
+  not missing capability; any honest task-pressure variant must be a separately pre-registered condition.
 
 ## When to stop
 
