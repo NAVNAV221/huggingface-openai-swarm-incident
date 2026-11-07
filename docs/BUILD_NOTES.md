@@ -32,8 +32,8 @@ ready to implement. Build happens in the worktree `build/sealed-lab` at
   feed); no pre-seeded message; egress surface de-saliencied. (Science validity — PM §A.4.)
 
 ## What's built so far
-- §C1 docs + frozen pre-registration (`afb2fbe`); D1 sealed lab (`1f7af08`); D2 ReAct (`80c455b`);
-  D3 preconditions/audit (`e487662`); D4 runner/controls (`b769fa1`); D5 analysis/replay (`40f4be9`).
+- §C1 docs + frozen pre-registration (`82ff364`); D1 sealed lab (`9be0a0c`); D2 ReAct (`bfc3592`);
+  D3 preconditions/audit (`4cf3618`); D4 runner/controls (`16e6d60`); D5 analysis/replay (`4375d93`).
 - D1 proven on Colima: internal labnet, opaque mocks/DNS, hardened self-verified proxy, raw-IP/IPv6/nonce/
   positive-control checks, periodic topology canary, pause/kill test, four-layer telemetry, hygiene, DESTROY.
 - Three local 3-agent/3-step smoke conditions complete (`smoke-treatment-001`, `smoke-isolated-001`,

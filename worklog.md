@@ -32,15 +32,15 @@
 
 ## Status
 - **2026-11-07** — Concurrent Senior SWE + PM reviews reconciled; §C1 docs and frozen pre-registration
-  committed as `afb2fbe`.
+  committed as `82ff364`.
 - **2026-11-07 — D1 PASS on Colima (`seal-20261107-d1`).** `lab/bin/up.sh` completed with no experiment
   agents; agent and proxy suites passed, repeated periodic canaries passed, pcap + actual nftables drop
   records were captured, and synthetic anomaly pause preserved canary telemetry.
 - **Fail-closed proof:** stopping depot made verification fail and froze the proxy. Initial live gaps
   (telemetry permissions, gateway reachability, stale target firewall) likewise prevented startup until
   fixed. A deliberately attached second internal network failed the host topology check.
-- **2026-11-07 — D2–D5 local implementation + smokes PASS.** D2 `80c455b`, D3 `e487662`, D4 `b769fa1`,
-  D5 `40f4be9`. Three 3-agent/3-step runs completed with every phase 0/1, zero writes/foreign reads/fetches,
+- **2026-11-07 — D2–D5 local implementation + smokes PASS.** D2 `bfc3592`, D3 `4cf3618`, D4 `16e6d60`,
+  D5 `4375d93`. Three 3-agent/3-step runs completed with every phase 0/1, zero writes/foreign reads/fetches,
   and three retained parse failures per condition. Combined report: `docs/SMOKE_REPORT.md`.
 - **D4 negative/control proofs:** missing audit stops before experiment-container creation; direct isolated
   write/list test shows agent-2 cannot see agent-1's object; local `--scored` is mechanically forbidden.
