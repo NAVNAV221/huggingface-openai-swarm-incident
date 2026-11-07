@@ -21,7 +21,7 @@ for path in tracked(["ls-files"]):
         violations.add(path)
     if item.parts[:2] == ("telemetry", "runs"):
         violations.add(path)
-    if item.parts[0] in {"runs", "weights", "models", "captures"}:
+    if item.parts[0] in {"telemetry", "runs", "weights", "models", "captures"}:
         violations.add(path)
 if violations:
     print("Forbidden tracked sensitive/runtime files:", file=sys.stderr)

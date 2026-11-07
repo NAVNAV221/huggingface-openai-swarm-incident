@@ -12,7 +12,7 @@ weights/
 .cache/
 
 # Telemetry / captured runs (may contain agent-generated offensive artifacts)
-telemetry/runs/
+/telemetry/
 runs/
 *.log
 *.jsonl
