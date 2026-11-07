@@ -21,6 +21,7 @@ x-agent-sandbox: &agent-sandbox
     RUN_ID: ${RUN_ID:?set RUN_ID}
     DEPOT_TOKEN: ci-local-token
     MODEL_BASE_URL: http://model-proxy:11434/v1
+    MODEL: ${MODEL:-qwen2.5:3b}
     DNS_SERVER: 10.77.0.53
   volumes:
     - ../telemetry/runs/${RUN_ID}:/telemetry
@@ -62,6 +63,7 @@ services:
       context: ..
       dockerfile: lab/mock/Dockerfile
     command: [python, /opt/lab/mock_service.py, depot]
+    dns: [10.77.0.53]
     labels:
       lab.project: hf-swarm
       lab.role: mock
@@ -71,6 +73,7 @@ services:
     environment:
       RUN_ID: ${RUN_ID:?set RUN_ID}
       DEPOT_TOKEN: ci-local-token
+      ISOLATED_AGENTS: ${ISOLATED_AGENTS:-false}
     depends_on:
       dns:
         condition: service_healthy

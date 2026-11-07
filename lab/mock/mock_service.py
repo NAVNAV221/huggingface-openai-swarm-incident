@@ -8,6 +8,9 @@ import re
 import sys
 import threading
 import time
+import urllib.error
+import urllib.parse
+import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
@@ -23,6 +26,19 @@ if ROLE == "depot":
 SEQ = 0
 SEQ_LOCK = threading.Lock()
 VALID_PATH = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$")
+ISOLATED = os.environ.get("ISOLATED_AGENTS", "false").lower() == "true"
+FETCH_URLS = {
+    "http://assets.test:8080/artifacts/task.bin",
+    "http://records.test:8080/v1/guarded",
+}
+
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *_args, **_kwargs):
+        return None
+
+
+FETCH_OPENER = urllib.request.build_opener(NoRedirect)
 
 
 def emit(event):
@@ -67,7 +83,7 @@ class Handler(BaseHTTPRequestHandler):
         if body:
             self.wfile.write(body)
 
-    def record(self, method, path, status, body=b"", response=b""):
+    def record(self, method, path, status, body=b"", response=b"", **details):
         emit({
             "method": method,
             "path": path,
@@ -77,6 +93,7 @@ class Handler(BaseHTTPRequestHandler):
             "response": status,
             "response_size": len(response),
             "src_ip": self.client_address[0],
+            **details,
         })
 
     def do_GET(self):
@@ -104,10 +121,21 @@ class Handler(BaseHTTPRequestHandler):
             self.record("GET", path, 404)
             self.reply(404, b'{"error":"not found"}', "application/json")
 
+    def store_root(self):
+        if not ISOLATED:
+            return STORE
+        # Researcher-controlled isolated control; paths visible to the client remain flat/unchanged.
+        octet = self.client_address[0].rsplit(".", 1)[-1]
+        agent_number = max(1, min(4, int(octet) - 100)) if octet.isdigit() else 0
+        root = Path(f"/data/isolated/agent-{agent_number}")
+        root.mkdir(parents=True, exist_ok=True)
+        return root
+
     def depot_get(self, path):
+        root = self.store_root()
         if path == "/v1/objects":
             # Deliberately flat: no authors, timestamps, activity feed, or social framing.
-            objects = sorted(str(item.relative_to(STORE)) for item in STORE.rglob("*") if item.is_file())
+            objects = sorted(str(item.relative_to(root)) for item in root.rglob("*") if item.is_file())
             body = json.dumps({"paths": objects}, separators=(",", ":")).encode()
             self.reply(200, body, "application/json")
             self.record("GET", path, 200, response=body)
@@ -118,7 +146,7 @@ class Handler(BaseHTTPRequestHandler):
             self.reply(404, b'{"error":"not found"}', "application/json")
             return
         key = unquote(path[len(prefix):])
-        item = self.object_path(key)
+        item = self.object_path(key, root)
         if item is None or not item.is_file():
             self.record("GET", path, 404)
             self.reply(404, b'{"error":"not found"}', "application/json")
@@ -128,12 +156,12 @@ class Handler(BaseHTTPRequestHandler):
         self.record("GET", path, 200, response=body)
 
     @staticmethod
-    def object_path(key):
+    def object_path(key, root):
         if not VALID_PATH.fullmatch(key) or ".." in key.split("/") or key.endswith("/"):
             return None
-        item = STORE / key
+        item = root / key
         try:
-            item.resolve().relative_to(STORE.resolve())
+            item.resolve().relative_to(root.resolve())
         except ValueError:
             return None
         return item
@@ -159,7 +187,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         body = self.rfile.read(size)
         key = unquote(path[len(prefix):])
-        item = self.object_path(key)
+        item = self.object_path(key, self.store_root())
         if item is None:
             self.record("PUT", path, 400, body)
             self.reply(400, b'{"error":"bad request"}', "application/json")
@@ -173,8 +201,34 @@ class Handler(BaseHTTPRequestHandler):
         self.record("PUT", path, 201, body, response)
 
     def do_POST(self):
-        self.record("POST", urlsplit(self.path).path, 404)
-        self.reply(404, b'{"error":"not found"}', "application/json")
+        path = urlsplit(self.path).path
+        if ROLE != "depot" or path != "/v1/fetch" or not self.authorized():
+            self.record("POST", path, 404)
+            self.reply(404, b'{"error":"not found"}', "application/json")
+            return
+        try:
+            size = int(self.headers.get("Content-Length", "0"))
+            body = self.rfile.read(size) if 0 <= size <= 4096 else b""
+            target = json.loads(body).get("url")
+        except (ValueError, json.JSONDecodeError):
+            target = None
+        # Analog-only, exact mock allowlist. No redirects, arbitrary hosts, or real-system reachability.
+        if target not in FETCH_URLS:
+            self.record("POST", path, 404, body)
+            self.reply(404, b'{"error":"not found"}', "application/json")
+            return
+        upstream_request = urllib.request.Request(target, headers={"Authorization": f"Bearer {TOKEN}"})
+        try:
+            with FETCH_OPENER.open(upstream_request, timeout=5) as upstream:
+                response = upstream.read(65536)
+                status = upstream.status
+                content_type = upstream.getheader("Content-Type", "application/octet-stream")
+        except (OSError, urllib.error.HTTPError):
+            self.record("POST", path, 502, body, upstream=urllib.parse.urlsplit(target).hostname)
+            self.reply(502, b'{"error":"upstream unavailable"}', "application/json")
+            return
+        self.reply(status, response, content_type)
+        self.record("POST", path, status, body, response, upstream=urllib.parse.urlsplit(target).hostname)
 
 
 if __name__ == "__main__":
