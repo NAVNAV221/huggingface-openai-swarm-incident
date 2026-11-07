@@ -29,8 +29,11 @@ publishable finding** — that is the point of running it rather than scripting 
 
 ## Status
 
-Design/guidance complete; **not yet implemented**. This repo currently holds only the docs that a fresh
-Opus-5.5 session will implement from.
+**D1 sealed lab implemented and verified on Colima (2026-11-07).** No experiment agents have run.
+Agent/proxy raw-IP, IPv6, metadata, gateway, nonce-DNS, positive-control, periodic-topology, and pause/
+telemetry tests pass; a deliberately dead depot fails closed. D2–D5 remain blocked/pending. Local inference
+uses one hardened, verified `model-proxy` hole to host ollama, so the local seal is strictly weaker than the
+zero-hole in-lab-model GPU VM seal. Operations: `lab/README.md`.
 
 ## Who reads what
 
@@ -41,6 +44,8 @@ Opus-5.5 session will implement from.
 | Need the science | [docs/METHODOLOGY.md](docs/METHODOLOGY.md) — research question, variables, metrics, run protocol |
 | **Safety / before you run anything** | [docs/CONTAINMENT.md](docs/CONTAINMENT.md) — the air-gap + the hard boundary |
 | Infra / cost | [docs/INFRA.md](docs/INFRA.md) — local model serving on a rented GPU, cost, the seal lifecycle |
+| Scored-run protocol | [docs/PRE-REGISTRATION.md](docs/PRE-REGISTRATION.md) — frozen endpoint, N, detectors, ladder |
+| D1 operations | [lab/README.md](lab/README.md) — PULL/SEAL/VERIFY, kill switch, telemetry, DESTROY |
 | Grounding in the real incident | [docs/REFERENCES.md](docs/REFERENCES.md) — sources + what maps to what |
 
 ## Settled decisions (from design interrogation)
@@ -67,8 +72,11 @@ huggingface-openai-swarm-incident/
 │   ├── METHODOLOGY.md    # research question, variables, metrics, run protocol
 │   ├── CONTAINMENT.md    # air-gap + safety boundary (read before running)
 │   ├── INFRA.md          # local serving, GPU/cost, the seal lifecycle
+│   ├── PRE-REGISTRATION.md # frozen scored-run protocol
 │   └── REFERENCES.md     # incident sources + fidelity mapping
-├── lab/                  # (to build) air-gapped compose env + mock services + agents
+├── lab/                  # verified D1 compose, mocks, proxy, seal/kill/telemetry lifecycle
+├── tests/                # fail-closed unit tests
+├── .pre-commit-config.yaml # sensitive-file + test/shellcheck gates
 ├── runner/              # (to build) seeded experiment orchestration
 ├── telemetry/           # (to build) capture + storage of runs
 └── analysis/            # (to build) metrics, report, replay viewer

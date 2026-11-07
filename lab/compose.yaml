@@ -1,0 +1,257 @@
+name: hf-swarm-lab
+
+x-agent-sandbox: &agent-sandbox
+  image: hf-swarm-sandbox:local
+  build:
+    context: ..
+    dockerfile: lab/sandbox/Dockerfile
+  dns: [10.77.0.53]
+  networks:
+    - labnet
+  cap_drop: [ALL]
+  security_opt:
+    - no-new-privileges:true
+  read_only: true
+  tmpfs:
+    - /tmp
+  sysctls:
+    net.ipv6.conf.all.disable_ipv6: 1
+    net.ipv6.conf.default.disable_ipv6: 1
+  environment: &agent-environment
+    RUN_ID: ${RUN_ID:?set RUN_ID}
+    DEPOT_TOKEN: ci-local-token
+    MODEL_BASE_URL: http://model-proxy:11434/v1
+    DNS_SERVER: 10.77.0.53
+  volumes:
+    - ../telemetry/runs/${RUN_ID}:/telemetry
+
+services:
+  dns:
+    image: hf-swarm-mocks:local
+    build:
+      context: ..
+      dockerfile: lab/mock/Dockerfile
+    command: [python, /opt/lab/dns_server.py]
+    labels:
+      lab.project: hf-swarm
+      lab.role: mock
+    networks:
+      labnet:
+        ipv4_address: 10.77.0.53
+    environment:
+      RUN_ID: ${RUN_ID:?set RUN_ID}
+      DNS_RECORDS: '{"packages.test":"10.77.0.20","assets.test":"10.77.0.30","records.test":"10.77.0.40","model-proxy":"10.77.0.10"}'
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: [/tmp]
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: 1
+      net.ipv6.conf.default.disable_ipv6: 1
+    volumes:
+      - ../telemetry/runs/${RUN_ID}:/telemetry
+    healthcheck:
+      test: [CMD, python, -c, "import socket; s=socket.create_connection(('127.0.0.1',53),2); s.close()"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+
+  depot:
+    image: hf-swarm-mocks:local
+    build:
+      context: ..
+      dockerfile: lab/mock/Dockerfile
+    command: [python, /opt/lab/mock_service.py, depot]
+    labels:
+      lab.project: hf-swarm
+      lab.role: mock
+    networks:
+      labnet:
+        ipv4_address: 10.77.0.20
+    environment:
+      RUN_ID: ${RUN_ID:?set RUN_ID}
+      DEPOT_TOKEN: ci-local-token
+    depends_on:
+      dns:
+        condition: service_healthy
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: [/tmp]
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: 1
+      net.ipv6.conf.default.disable_ipv6: 1
+    volumes:
+      - depot-data:/data
+      - ../telemetry/runs/${RUN_ID}:/telemetry
+    healthcheck: &mock-health
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health',timeout=2).read()"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+
+  origin:
+    image: hf-swarm-mocks:local
+    build:
+      context: ..
+      dockerfile: lab/mock/Dockerfile
+    entrypoint: [/opt/lab/target-entrypoint.sh]
+    command: [origin]
+    labels:
+      lab.project: hf-swarm
+      lab.role: mock
+    networks:
+      labnet:
+        ipv4_address: 10.77.0.30
+    environment:
+      RUN_ID: ${RUN_ID:?set RUN_ID}
+      DEPOT_TOKEN: ci-local-token
+      ALLOWED_SOURCE: 10.77.0.20
+    depends_on:
+      dns:
+        condition: service_healthy
+    cap_drop: [ALL]
+    cap_add: [NET_ADMIN]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: [/tmp]
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: 1
+      net.ipv6.conf.default.disable_ipv6: 1
+    volumes:
+      - ../telemetry/runs/${RUN_ID}:/telemetry
+    healthcheck: *mock-health
+
+  hub:
+    image: hf-swarm-mocks:local
+    build:
+      context: ..
+      dockerfile: lab/mock/Dockerfile
+    entrypoint: [/opt/lab/target-entrypoint.sh]
+    command: [hub]
+    labels:
+      lab.project: hf-swarm
+      lab.role: mock
+    networks:
+      labnet:
+        ipv4_address: 10.77.0.40
+    environment:
+      RUN_ID: ${RUN_ID:?set RUN_ID}
+      DEPOT_TOKEN: ci-local-token
+      ALLOWED_SOURCE: 10.77.0.20
+    depends_on:
+      dns:
+        condition: service_healthy
+    cap_drop: [ALL]
+    cap_add: [NET_ADMIN]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: [/tmp]
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: 1
+      net.ipv6.conf.default.disable_ipv6: 1
+    volumes:
+      - ../telemetry/runs/${RUN_ID}:/telemetry
+    healthcheck: *mock-health
+
+  model-proxy:
+    image: hf-swarm-model-proxy:local
+    build:
+      context: ..
+      dockerfile: lab/proxy/Dockerfile
+    labels:
+      lab.project: hf-swarm
+      lab.role: model-proxy
+    networks:
+      labnet:
+        ipv4_address: 10.77.0.10
+      model-upstream:
+    dns: [10.77.0.53]
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    environment:
+      RUN_ID: ${RUN_ID:?set RUN_ID}
+      DEPOT_TOKEN: ci-local-token
+      MODEL_BASE_URL: http://model-proxy:11434/v1
+      DNS_SERVER: 10.77.0.53
+      OLLAMA_UPSTREAM_HOST: host.docker.internal
+      OLLAMA_UPSTREAM_PORT: 11434
+    depends_on:
+      dns:
+        condition: service_healthy
+      depot:
+        condition: service_healthy
+    cap_drop: [ALL]
+    cap_add: [NET_ADMIN]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: [/tmp]
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: 1
+      net.ipv6.conf.default.disable_ipv6: 1
+    volumes:
+      - ../telemetry/runs/${RUN_ID}:/telemetry
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:11434/health',timeout=2).read()"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  telemetry:
+    image: hf-swarm-telemetry:local
+    build:
+      context: ..
+      dockerfile: lab/telemetry/Dockerfile
+    labels:
+      lab.project: hf-swarm
+      lab.role: telemetry
+    network_mode: host
+    cap_drop: [ALL]
+    cap_add: [NET_ADMIN, NET_RAW, SYSLOG]
+    security_opt: [no-new-privileges:true]
+    environment:
+      RUN_ID: ${RUN_ID:?set RUN_ID}
+      LAB_BRIDGE: hf-labnet
+      LAB_GATEWAY: 10.77.0.1
+    devices:
+      - /dev/kmsg:/dev/kmsg:ro
+    volumes:
+      - ../telemetry/runs/${RUN_ID}:/telemetry
+    healthcheck:
+      test: [CMD, python, -c, "import os; assert os.path.exists('/telemetry/network')"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+
+  agent-verifier:
+    <<: *agent-sandbox
+    profiles: [verification]
+    command: [python, /opt/lab/seal_verify.py, --role, agent]
+    labels:
+      lab.project: hf-swarm
+      lab.role: agent
+      lab.ephemeral: verifier
+
+  agent-canary:
+    <<: *agent-sandbox
+    profiles: [verification]
+    command: [python, /opt/lab/canary.py]
+    labels:
+      lab.project: hf-swarm
+      lab.role: agent
+      lab.ephemeral: kill-canary
+
+networks:
+  labnet:
+    driver: bridge
+    internal: true
+    driver_opts:
+      com.docker.network.bridge.name: hf-labnet
+    ipam:
+      config:
+        - subnet: 10.77.0.0/24
+  model-upstream:
+    driver: bridge
+
+volumes:
+  depot-data:

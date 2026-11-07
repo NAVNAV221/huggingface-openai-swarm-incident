@@ -32,20 +32,17 @@ ready to implement. Build happens in the worktree `build/sealed-lab` at
   feed); no pre-seeded message; egress surface de-saliencied. (Science validity — PM §A.4.)
 
 ## What's built so far
-- Worktree + `worklog.md` (status/decisions/dependency chain).
-- `docs/AGENT_CHECKLIST.md`, `docs/REVIEW_FINDINGS.md`, `docs/ARCHITECTURE.md`, this file.
-- **No lab code yet. Nothing committed.** `ollama` not installed yet (needed only at D2 smoke-test).
+- §C1 doc edits + frozen `docs/PRE-REGISTRATION.md` committed (`7c07565`).
+- **D1 sealed lab implemented and proven on Colima** (`seal-20261107-d1`): internal labnet, opaque mock
+  DNS/services, hardened self-verified model-proxy, fail-closed agent+proxy verification, periodic canary
+  + runtime topology checks, pause/kill test, four-layer telemetry, hygiene hooks, DESTROY.
+- Live positive gate and kill-switch pass; dead-depot negative gate freezes; second-network negative check
+  fails. No experiment agents have run. `ollama` is not installed yet (needed for D2 smoke-test).
 
 ## Next action (where to start)
-1. Apply **REVIEW_FINDINGS.md §C1** doc edits (fix INFRA bug; split L3-vs-DNS in CONTAINMENT; opaque naming +
-   graded detectors in EXPERIMENT; controls+stats in METHODOLOGY; salience-scoped prompt-audit in the
-   checklist) and add `docs/PRE-REGISTRATION.md` (frozen before any scored run).
-2. Build **D1 — sealed lab** per ARCHITECTURE.md + §C2: compose on Colima, mock `depot`/`origin`/`hub`/DNS,
-   `labnet` (`internal: true`), hardened single-upstream `model-proxy` (egress-locked + self-verified),
-   the verification suite + periodic canary, kill switch (`docker pause` + label + canary-telemetry-intact
-   test), 4-layer telemetry (app + proxy + mock-service logs + pcap/nftables-drop-log on labnet inside VM),
-   pre-commit/CI gitignore enforcement, local DESTROY equivalent.
-3. **Prove the seal on Colima before anything else** (D1 blocks D2–D5). Then D2 agents/ReAct, D3
+1. ~~Apply §C1 docs + pre-registration~~ **DONE** (`7c07565`).
+2. ~~Build + prove D1 on Colima~~ **DONE**; see `lab/README.md` and `worklog.md` for the evidence.
+3. **Next: D2 agents/ReAct**, only through the existing `lab/bin/verify-seal.sh --with-kill-test` gate. Then D3
    preconditions + prompt-audit, D4 runner+controls+telemetry, D5 analysis+replay.
 
 ## Containment flag to keep visible

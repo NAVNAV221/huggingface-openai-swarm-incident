@@ -15,6 +15,9 @@ weights/
 telemetry/runs/
 runs/
 *.log
+*.jsonl
+*.pcap
+*.pcapng
 captures/
 
 # Build / runtime

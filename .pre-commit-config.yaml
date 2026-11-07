@@ -1,0 +1,20 @@
+repos:
+  - repo: local
+    hooks:
+      - id: sensitive-file-guard
+        name: Reject tracked weights, telemetry, and secrets
+        entry: python3 lab/bin/check-repo-hygiene.py
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: unit-tests
+        name: Seal verifier fail-closed unit tests
+        entry: python3 -m unittest discover -s tests -v
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: shellcheck
+        name: Shellcheck lab lifecycle scripts
+        entry: shellcheck
+        language: system
+        types: [shell]
