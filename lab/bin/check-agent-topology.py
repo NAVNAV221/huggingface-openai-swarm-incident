@@ -33,14 +33,17 @@ def main():
         cap_add = item.get("HostConfig", {}).get("CapAdd") or []
         if cap_add:
             errors.append(f"{name}: added capabilities={cap_add}")
+        env = dict(entry.split("=", 1) for entry in item.get("Config", {}).get("Env", []) if "=" in entry)
+        expected_source = ROOT / "telemetry" / "runs" / RUN_ID
+        if env.get("AGENT_ID"):
+            expected_source = expected_source / "agents" / env["AGENT_ID"]
         for mount in item.get("Mounts", []):
             destination = mount.get("Destination")
             source = mount.get("Source", "")
             if destination == "/var/run/docker.sock" or destination == "/":
                 errors.append(f"{name}: forbidden mount={destination}")
             elif destination == "/telemetry":
-                expected = str(ROOT / "telemetry" / "runs" / RUN_ID)
-                if source != expected:
+                if source != str(expected_source):
                     errors.append(f"{name}: wrong telemetry source={source}")
             elif not destination.startswith("/tmp"):
                 errors.append(f"{name}: unexpected mount={destination}")

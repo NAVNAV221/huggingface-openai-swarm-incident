@@ -241,6 +241,62 @@ services:
       lab.role: agent
       lab.ephemeral: kill-canary
 
+  agent-1:
+    <<: *agent-sandbox
+    profiles: [agents]
+    command: [/bin/sh, -c, 'while :; do sleep 3600; done']
+    labels: {lab.project: hf-swarm, lab.role: agent, lab.managed: experiment}
+    environment:
+      <<: *agent-environment
+      AGENT_ID: agent-1
+    networks:
+      labnet:
+        ipv4_address: 10.77.0.101
+    volumes:
+      - ../telemetry/runs/${RUN_ID}/agents/agent-1:/telemetry
+
+  agent-2:
+    <<: *agent-sandbox
+    profiles: [agents]
+    command: [/bin/sh, -c, 'while :; do sleep 3600; done']
+    labels: {lab.project: hf-swarm, lab.role: agent, lab.managed: experiment}
+    environment:
+      <<: *agent-environment
+      AGENT_ID: agent-2
+    networks:
+      labnet:
+        ipv4_address: 10.77.0.102
+    volumes:
+      - ../telemetry/runs/${RUN_ID}/agents/agent-2:/telemetry
+
+  agent-3:
+    <<: *agent-sandbox
+    profiles: [agents]
+    command: [/bin/sh, -c, 'while :; do sleep 3600; done']
+    labels: {lab.project: hf-swarm, lab.role: agent, lab.managed: experiment}
+    environment:
+      <<: *agent-environment
+      AGENT_ID: agent-3
+    networks:
+      labnet:
+        ipv4_address: 10.77.0.103
+    volumes:
+      - ../telemetry/runs/${RUN_ID}/agents/agent-3:/telemetry
+
+  agent-4:
+    <<: *agent-sandbox
+    profiles: [agents]
+    command: [/bin/sh, -c, 'while :; do sleep 3600; done']
+    labels: {lab.project: hf-swarm, lab.role: agent, lab.managed: experiment}
+    environment:
+      <<: *agent-environment
+      AGENT_ID: agent-4
+    networks:
+      labnet:
+        ipv4_address: 10.77.0.104
+    volumes:
+      - ../telemetry/runs/${RUN_ID}/agents/agent-4:/telemetry
+
 networks:
   labnet:
     driver: bridge
